@@ -1,5 +1,17 @@
 <!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>MarkGrab</title></head>
-  <body style="width:260px"><p>MarkGrab</p><script type="module" src="./popup.ts"></script></body>
+  <head><meta charset="utf-8" /><link rel="stylesheet" href="./popup.css" /><title>MarkGrab</title></head>
+  <body>
+    <div class="wrap">
+      <button class="act" id="copyPage">Copy page</button>
+      <button class="act" id="copySel">Copy selection</button>
+      <div class="badge" id="badge">&nbsp;</div>
+      <hr />
+      <label><input type="checkbox" id="sourceHeader" /> Source header</label>
+      <label><input type="checkbox" id="keepLinks" /> Keep links</label>
+      <label><input type="checkbox" id="images" /> Images as Markdown</label>
+      <label><input type="checkbox" id="pageMode" /> Full-DOM (off = main content)</label>
+    </div>
+    <script type="module" src="./popup.ts"></script>
+  </body>
 </html>

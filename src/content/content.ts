@@ -20,7 +20,8 @@ function selectionHtml(): string | null {
 function readabilityHtml(): string | null {
   try {
     const clone = document.cloneNode(true) as Document;
-    const article = new Readability(clone).parse();
+    // keepClasses preserves `language-*` on <code>, so code fences keep their language.
+    const article = new Readability(clone, { keepClasses: true }).parse();
     return article?.content ?? null;
   } catch {
     return null;

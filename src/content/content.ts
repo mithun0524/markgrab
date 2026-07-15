@@ -38,17 +38,24 @@ function meta(): SourceMeta {
 
 async function writeClipboard(text: string): Promise<void> {
   try {
+    window.focus();
     await navigator.clipboard.writeText(text);
+    return;
   } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
+    /* fall through to execCommand */
   }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  const ok = document.execCommand('copy');
+  ta.remove();
+  if (!ok) throw new Error('Clipboard write blocked by this page');
 }
 
 function toast(message: string): void {
@@ -91,12 +98,16 @@ async function handleCopy(req: CopyRequest): Promise<CopyResponse> {
 
   try {
     const md = convert(html, opts);
-    await writeClipboard(md);
     const tokens = estimateTokens(md);
-    toast(`Copied • ~${tokens} tokens${fellBack ? ' (full page)' : ''}`);
-    return { ok: true, tokens };
+    if (req.writeInPage) {
+      // Menu/shortcut: the page is focused, write here and show a toast.
+      await writeClipboard(md);
+      toast(`Copied • ~${tokens} tokens${fellBack ? ' (full page)' : ''}`);
+    }
+    // Always return the Markdown so an unfocused caller (popup) can write it.
+    return { ok: true, tokens, markdown: md };
   } catch (e) {
-    toast('Copy failed');
+    if (req.writeInPage) toast('Copy failed');
     return { ok: false, error: String(e) };
   }
 }

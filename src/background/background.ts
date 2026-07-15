@@ -10,7 +10,8 @@ async function getSettings(): Promise<Settings> {
 async function runCopy(tabId: number, target: 'selection' | 'page'): Promise<void> {
   const settings = await getSettings();
   await chrome.scripting.executeScript({ target: { tabId }, files: [contentScript] });
-  const req: CopyRequest = { type: MSG_COPY, target, settings };
+  // Menu/shortcut: the page has focus, so the content script writes the clipboard.
+  const req: CopyRequest = { type: MSG_COPY, target, settings, writeInPage: true };
   try {
     await chrome.tabs.sendMessage(tabId, req);
   } catch {
@@ -18,13 +19,20 @@ async function runCopy(tabId: number, target: 'selection' | 'page'): Promise<voi
   }
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'markgrab-copy',
-    title: 'Copy as Markdown',
-    contexts: ['selection', 'page'],
+function registerMenu(): void {
+  // removeAll first so re-registration never fails on a duplicate id.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'markgrab-copy',
+      title: 'Copy as Markdown',
+      contexts: ['selection', 'page'],
+    });
   });
-});
+}
+
+chrome.runtime.onInstalled.addListener(registerMenu);
+// Also (re)register when the service worker starts, so a torn-down SW self-heals.
+registerMenu();
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== 'markgrab-copy' || !tab?.id) return;

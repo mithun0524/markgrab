@@ -28,11 +28,18 @@ async function copy(target: 'selection' | 'page'): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
   await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [contentScript] });
-  const req: CopyRequest = { type: MSG_COPY, target, settings: readForm() };
+  // writeInPage:false — the page isn't focused (this popup is), so the content
+  // script just returns the Markdown and we write the clipboard here.
+  const req: CopyRequest = { type: MSG_COPY, target, settings: readForm(), writeInPage: false };
   const badge = document.getElementById('badge')!;
   try {
     const res: CopyResponse = await chrome.tabs.sendMessage(tab.id, req);
-    badge.textContent = res.ok ? `Copied • ~${res.tokens} tokens` : res.error || 'Failed';
+    if (!res.ok || res.markdown == null) {
+      badge.textContent = res.error || 'Failed';
+      return;
+    }
+    await navigator.clipboard.writeText(res.markdown);
+    badge.textContent = `Copied • ~${res.tokens} tokens`;
   } catch {
     badge.textContent = 'Cannot copy from this page';
   }

@@ -3,7 +3,7 @@
   "name": "MarkGrab",
   "version": "0.1.0",
   "description": "Copy any selection or page as clean, LLM-ready Markdown.",
-  "permissions": ["contextMenus", "activeTab", "scripting", "storage"],
+  "permissions": ["contextMenus", "activeTab", "scripting", "storage", "clipboardWrite"],
   "background": { "service_worker": "src/background/background.ts", "type": "module" },
   "action": { "default_popup": "src/popup/popup.html", "default_title": "MarkGrab" },
   "commands": {

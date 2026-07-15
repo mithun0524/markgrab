@@ -57,6 +57,46 @@ describe('convert', () => {
   });
 });
 
+describe('convert — structure/tidiness', () => {
+  it('collapses 3+ blank lines to a single blank line', () => {
+    const md = convert('<p>a</p><p></p><p></p><p>b</p>', base);
+    expect(md).not.toMatch(/\n\n\n/);
+    expect(md).toBe('a\n\nb');
+  });
+
+  it('trims trailing whitespace on each line', () => {
+    const md = convert('<p>trailing   </p>', base);
+    expect(md).not.toMatch(/ +\n/);
+    expect(md).not.toMatch(/ +$/);
+  });
+
+  it('drops links whose text is empty', () => {
+    const md = convert('<p>keep<a href="https://x.com"></a>end</p>', base);
+    expect(md).not.toContain('[]');
+    expect(md).toBe('keepend');
+  });
+
+  it('drops empty bullet list items', () => {
+    const md = convert('<ul><li>one</li><li></li><li>two</li></ul>', base);
+    expect(md).not.toMatch(/^[-*+][ \t]*$/m); // no empty bullet line
+    expect(md).toMatch(/[-*+] +one/);
+    expect(md).toMatch(/[-*+] +two/);
+    expect(md.match(/^[-*+] /gm)?.length).toBe(2); // exactly two items survive
+  });
+
+  it('preserves blank lines and indentation inside code fences', () => {
+    const html =
+      '<pre><code class="language-py">def f():\n\n    return 1</code></pre>';
+    const md = convert(html, base);
+    expect(md).toContain('def f():\n\n    return 1');
+  });
+
+  it('has no leading or trailing blank lines', () => {
+    const md = convert('<p>only</p>', base);
+    expect(md).toBe('only');
+  });
+});
+
 describe('estimateTokens', () => {
   it('estimates ~1 token per 4 chars', () => {
     expect(estimateTokens('12345678')).toBe(2);

@@ -42,9 +42,33 @@ function buildService(opts: ConvertOptions): TurndownService {
   return td;
 }
 
+// Normalize a non-code Markdown segment for clean structure.
+function tidySegment(seg: string): string {
+  return seg
+    // Drop links/images whose visible text is empty: [](url) or ![]( )
+    .replace(/!?\[\s*\]\([^)]*\)/g, '')
+    // Trim trailing whitespace on every line.
+    .replace(/[ \t]+$/gm, '')
+    // Drop list-item lines that carry no content (bullet or ordered).
+    .replace(/^[ \t]*(?:[-*+]|\d+\.)[ \t]*$\n?/gm, '')
+    // Collapse 3+ newlines to a single blank line.
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+// Tidy the whole document while leaving fenced code blocks untouched.
+function tidy(md: string): string {
+  const parts = md.split(/(```[\s\S]*?```)/g);
+  const out = parts
+    .map((p, i) => (i % 2 === 1 ? p : tidySegment(p)))
+    .join('')
+    // Collapse blank lines introduced at fence boundaries.
+    .replace(/\n{3,}/g, '\n\n');
+  return out.trim();
+}
+
 export function convert(html: string, opts: ConvertOptions): string {
   const td = buildService(opts);
-  let md = td.turndown(html).trim();
+  let md = tidy(td.turndown(html));
   if (opts.sourceHeader && opts.meta) {
     const { title, url, date } = opts.meta;
     md = `# ${title}\n\n> ${url}\n>\n> ${date}\n\n---\n\n${md}`;

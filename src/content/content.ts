@@ -1,5 +1,6 @@
 import { Readability } from '@mozilla/readability';
 import { convert, estimateTokens } from '../converter/converter';
+import { extractChatTurns } from '../converter/extract';
 import type { ConvertOptions, Settings, SourceMeta } from '../converter/types';
 import { MSG_COPY, type CopyRequest, type CopyResponse } from '../shared/messages';
 
@@ -82,7 +83,8 @@ async function handleCopy(req: CopyRequest): Promise<CopyResponse> {
     if (sel) {
       html = sel;
     } else if (s.pageMode === 'main') {
-      html = readabilityHtml();
+      // Chat pages first (Readability drops most turns), then articles, then raw.
+      html = extractChatTurns(document) ?? readabilityHtml();
       if (!html) { html = document.body.innerHTML; fellBack = true; }
     } else {
       html = document.body.innerHTML;

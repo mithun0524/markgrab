@@ -143,6 +143,26 @@ Lots of things — learning, coding…</pre>
   </div>`,
 };
 
+// 440x280 small promo tile — its own CSS/markup, rendered at a 440x280 viewport.
+const PROMO_CSS = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 440px; height: 280px; overflow: hidden; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(120% 120% at 100% 0%, #3b82f6 0%, #2563eb 45%, #1d4ed8 100%);
+    color: #fff; display: flex; flex-direction: column; justify-content: center; padding: 34px 36px; position: relative; }
+  .badge { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
+  .badge .ic { width: 46px; height: 46px; background: rgba(255,255,255,.14); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; }
+  .badge b { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+  h1 { font-size: 26px; line-height: 1.12; font-weight: 800; letter-spacing: -.6px; max-width: 340px; }
+  p { margin-top: 12px; font-size: 14px; color: #dbeafe; }
+  .fade { position: absolute; right: -40px; bottom: -60px; width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(255,255,255,.16) 0%, transparent 70%); }`;
+
+const PROMO = `<div class="fade"></div>
+  <div class="badge"><span class="ic">${ICON.replace('width="30" height="30"', 'width="34" height="34"')}</span><b>MarkGrab</b></div>
+  <h1>Copy any page as clean Markdown for LLMs</h1>
+  <p>Tables, code &amp; full chats — 100% local</p>`;
+
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
@@ -154,4 +174,14 @@ for (const [name, body] of Object.entries(slides)) {
   await page.screenshot({ path: path.join(OUT, name + '@2x.png') });
   console.log('rendered', name);
 }
+
+// promo tile
+await page.setViewport({ width: 440, height: 280, deviceScaleFactor: 2 });
+await page.setContent(`<!doctype html><meta charset="utf-8"><style>${PROMO_CSS}</style>${PROMO}`, {
+  waitUntil: 'load',
+});
+await new Promise((r) => setTimeout(r, 250));
+await page.screenshot({ path: path.join(OUT, 'promo-440x280@2x.png') });
+console.log('rendered promo-440x280');
+
 await browser.close();

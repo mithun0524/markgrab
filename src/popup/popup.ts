@@ -4,6 +4,23 @@ import contentScript from '../content/content?script';
 
 const ids = ['sourceHeader', 'keepLinks', 'images'] as const;
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** The injected content script registers its listener behind an async dynamic
+ * import; retry until it answers so we never message before it's ready. */
+async function sendWhenReady(tabId: number, req: CopyRequest, tries = 40): Promise<CopyResponse> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return (await chrome.tabs.sendMessage(tabId, req)) as CopyResponse;
+    } catch (e) {
+      lastErr = e;
+      await sleep(25);
+    }
+  }
+  throw lastErr;
+}
+
 async function load(): Promise<Settings> {
   const s = { ...DEFAULT_SETTINGS, ...(await chrome.storage.sync.get(DEFAULT_SETTINGS)) } as Settings;
   ids.forEach((k) => ((document.getElementById(k) as HTMLInputElement).checked = s[k]));
@@ -33,7 +50,7 @@ async function copy(target: 'selection' | 'page'): Promise<void> {
   const req: CopyRequest = { type: MSG_COPY, target, settings: readForm(), writeInPage: false };
   const badge = document.getElementById('badge')!;
   try {
-    const res: CopyResponse = await chrome.tabs.sendMessage(tab.id, req);
+    const res = await sendWhenReady(tab.id, req);
     if (!res.ok || res.markdown == null) {
       badge.textContent = res.error || 'Failed';
       return;

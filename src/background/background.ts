@@ -1,10 +1,28 @@
 import { DEFAULT_SETTINGS, type Settings } from '../converter/types';
-import { MSG_COPY, type CopyRequest } from '../shared/messages';
+import { MSG_COPY, type CopyRequest, type CopyResponse } from '../shared/messages';
 import contentScript from '../content/content?script';
 
 async function getSettings(): Promise<Settings> {
   const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
   return { ...DEFAULT_SETTINGS, ...stored } as Settings;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** The injected content script registers its message listener behind an async
+ * dynamic import, so executeScript resolves before the listener exists. Retry
+ * sendMessage until the listener answers (or give up after ~1s). */
+async function sendWhenReady(tabId: number, req: CopyRequest, tries = 40): Promise<CopyResponse> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return (await chrome.tabs.sendMessage(tabId, req)) as CopyResponse;
+    } catch (e) {
+      lastErr = e;
+      await sleep(25);
+    }
+  }
+  throw lastErr;
 }
 
 async function runCopy(tabId: number, target: 'selection' | 'page'): Promise<void> {
@@ -13,7 +31,7 @@ async function runCopy(tabId: number, target: 'selection' | 'page'): Promise<voi
   // Menu/shortcut: the page has focus, so the content script writes the clipboard.
   const req: CopyRequest = { type: MSG_COPY, target, settings, writeInPage: true };
   try {
-    await chrome.tabs.sendMessage(tabId, req);
+    await sendWhenReady(tabId, req);
   } catch {
     /* tab not messageable (e.g. chrome:// page) — ignore */
   }
